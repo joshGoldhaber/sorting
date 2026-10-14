@@ -17,6 +17,7 @@ equivalently, the result of every call to cmp is negated.
 import math
 import random
 
+
 def cmp_standard(a, b):
     '''
     used for sorting from lowest to highest
@@ -46,6 +47,7 @@ def cmp_reverse(a, b):
     >>> cmp_reverse(322, 322)
     0
     '''
+    return -cmp_standard(a, b)
 
 
 def cmp_invert(cmp):
@@ -148,6 +150,13 @@ def cmp_nan_first(a, b):
     >>> cmp_nan_first(float('nan'), float('nan'))
     0
     '''
+    if math.isnan(a):
+        if math.isnan(b):
+            return 0
+        return -1
+    if math.isnan(b):
+        return 1
+    return cmp_standard(a, b)
 
 
 def _natural_chunks(s):
@@ -234,6 +243,27 @@ def _merged(xs, ys, cmp=cmp_standard, reverse=False):
     >>> _merged([1, 3, float('nan')], [2], cmp=cmp_nan_last)
     [1, 2, 3, nan]
     '''
+    if reverse:
+        cmp = cmp_invert(cmp)
+
+    out = []
+    i = 0
+    j = 0
+    while i < len(xs) and j < len(ys):
+        if cmp(xs[i], ys[j]) <= 0:
+            out.append(xs[i])
+            i += 1
+        else:
+            out.append(ys[j])
+            j += 1
+
+    while i < len(xs):
+        out.append(xs[i])
+        i += 1
+    while j < len(ys):
+        out.append(ys[j])
+        j += 1
+    return out
 
 
 def merge_sorted(xs, cmp=cmp_standard, reverse=False):
@@ -261,6 +291,16 @@ def merge_sorted(xs, cmp=cmp_standard, reverse=False):
     >>> merge_sorted(['file10', 'file2', 'file1'], cmp=cmp_natural)
     ['file1', 'file2', 'file10']
     '''
+    if reverse:
+        cmp = cmp_invert(cmp)
+
+    if len(xs) <= 1:
+        return list(xs)
+
+    mid = len(xs) // 2
+    left = merge_sorted(xs[:mid], cmp)
+    right = merge_sorted(xs[mid:], cmp)
+    return _merged(left, right, cmp)
 
 
 def quick_sorted(xs, cmp=cmp_standard, reverse=False):
@@ -268,7 +308,7 @@ def quick_sorted(xs, cmp=cmp_standard, reverse=False):
     Quicksort is like mergesort,
     but it uses a different strategy to split the list.
     Instead of splitting the list down the middle,
-    a "pivot" value is randomly selected, 
+    a "pivot" value is randomly selected,
     and the list is split into a "less than" sublist and a "greater than" sublist.
 
     The pseudocode is:
@@ -295,6 +335,26 @@ def quick_sorted(xs, cmp=cmp_standard, reverse=False):
     >>> quick_sorted([float('nan'), 1, 5, 2, 3], cmp=cmp_nan_first)
     [nan, 1, 2, 3, 5]
     '''
+    if reverse:
+        cmp = cmp_invert(cmp)
+
+    if len(xs) <= 1:
+        return list(xs)
+
+    pivot = random.choice(xs)
+    less = []
+    equal = []
+    greater = []
+    for x in xs:
+        result = cmp(x, pivot)
+        if result < 0:
+            less.append(x)
+        elif result > 0:
+            greater.append(x)
+        else:
+            equal.append(x)
+
+    return quick_sorted(less, cmp) + equal + quick_sorted(greater, cmp)
 
 
 def quick_sort(xs, cmp=cmp_standard, reverse=False):
@@ -328,3 +388,26 @@ def quick_sort(xs, cmp=cmp_standard, reverse=False):
     >>> xs
     ['file2', 'file10']
     '''
+    if reverse:
+        cmp = cmp_invert(cmp)
+
+    def partition(lo, hi):
+        r = random.randint(lo, hi)
+        xs[r], xs[hi] = xs[hi], xs[r]
+        pivot = xs[hi]
+        i = lo
+        for j in range(lo, hi):
+            if cmp(xs[j], pivot) <= 0:
+                xs[i], xs[j] = xs[j], xs[i]
+                i += 1
+        xs[i], xs[hi] = xs[hi], xs[i]
+        return i
+
+    def go(lo, hi):
+        if lo >= hi:
+            return
+        p = partition(lo, hi)
+        go(lo, p - 1)
+        go(p + 1, hi)
+
+    go(0, len(xs) - 1)
